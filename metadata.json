@@ -1,6 +1,6 @@
 {
-  "name": "Claude S40",
-  "description": "Retro Nokia Series 40 client for Claude AI, ported for Galaxy A53 with authentic Nokia 6300 UI, T9 keypad, sound effects, reading mode, message actions, and AI connectivity.",
+  "name": "Claude Galaxy",
+  "description": "Modern Samsung Galaxy AI client for Claude with One UI design, multi-agent tools, live web search, summaries, translations, and task management.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

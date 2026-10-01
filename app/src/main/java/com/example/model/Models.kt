@@ -12,33 +12,32 @@ enum class ApiProvider {
     BUILTIN_SMART
 }
 
-enum class S40Theme(val displayName: String, val primaryHex: Long, val bgHex: Long) {
-    SAPPHIRE_BLUE("Nokia Sapphire Blue", 0xFF0D47A1, 0xFFE3F2FD),
-    RETRO_GREEN("Nokia 3310 LCD Green", 0xFF2E7D32, 0xFFDCEDC8),
-    CYBER_SILVER("Nokia 6300 Steel Silver", 0xFF374151, 0xFFF3F4F6),
-    MATRIX_DARK("Matrix Hacker Dark", 0xFF00C853, 0xFF121212),
-    MONOCHROME_AMBER("Amber Phosphor", 0xFFFF8F00, 0xFF1E1405)
+enum class GalaxyTheme(val displayName: String, val primaryHex: Long, val bgHex: Long, val isDark: Boolean) {
+    AMOLED_BLACK("Galaxy Phantom Black (AMOLED)", 0xFF3B82F6, 0xFF000000, true),
+    PHANTOM_BLUE("Galaxy Electric Blue", 0xFF2563EB, 0xFFF8FAFC, false),
+    GALAXY_LAVENDER("Galaxy Violet Lavender", 0xFF7C3AED, 0xFFFAF5FF, false),
+    MINIMAL_WHITE("Samsung One UI Porcelain", 0xFF0F172A, 0xFFFFFFFF, false),
+    GALAXY_EMERALD("Galaxy Forest Emerald", 0xFF059669, 0xFFF0FDF4, false)
 }
 
-enum class S40ViewMode {
-    NOKIA_6300_DEVICE,
-    FULLSCREEN_S40
-}
-
-enum class KeyboardMode {
-    T9_KEYPAD,
-    SYSTEM_KEYBOARD
+enum class GalaxyNavTab {
+    CHAT,
+    CONVERSATIONS,
+    AGENTS,
+    NOTES_TASKS,
+    SETTINGS
 }
 
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
-    val conversationId: String,
+    val conversationId: String = "default-chat",
     val role: String, // "user", "assistant", "system"
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
     val sources: List<String> = emptyList(),
     val isPinned: Boolean = false,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    val agentName: String = "Claude 3.5 Sonnet"
 ) {
     val formattedTime: String
         get() {
@@ -57,7 +56,7 @@ data class Conversation(
 ) {
     val formattedDate: String
         get() {
-            val sdf = SimpleDateFormat("dd.MM.yy HH:mm", Locale.getDefault())
+            val sdf = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
             return sdf.format(Date(updatedAt))
         }
 }
@@ -80,7 +79,7 @@ data class SavedTextFile(
 ) {
     val formattedDate: String
         get() {
-            val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+            val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
             return sdf.format(Date(timestamp))
         }
 }
@@ -92,12 +91,19 @@ data class AppSettings(
     val modelName: String = "claude-3-5-sonnet-20241022",
     val proxyUrl: String = "http://10.0.2.2:8080",
     val language: String = "en", // "en" or "tr"
-    val theme: S40Theme = S40Theme.SAPPHIRE_BLUE,
-    val viewMode: S40ViewMode = S40ViewMode.NOKIA_6300_DEVICE,
-    val keyboardMode: KeyboardMode = KeyboardMode.T9_KEYPAD,
+    val theme: GalaxyTheme = GalaxyTheme.AMOLED_BLACK,
     val soundEnabled: Boolean = true,
     val vibrateEnabled: Boolean = true,
     val webSearchEnabled: Boolean = false,
-    val readingFontSize: Int = 14,
     val systemNotes: String = ""
+)
+
+data class AgentDefinition(
+    val id: String,
+    val name: String,
+    val tag: String,
+    val description: String,
+    val iconName: String,
+    val defaultPrompt: String,
+    val category: String
 )

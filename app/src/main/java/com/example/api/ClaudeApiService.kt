@@ -97,8 +97,8 @@ class ClaudeApiService {
         root.put("max_tokens", 1024)
 
         val systemPrompt = buildString {
-            append("You are Claude, running on Claude S40 (a client originally designed for Nokia Series 40 phones by Emir Karşıyakalı, now ported to Android for Samsung Galaxy A53). ")
-            append("Keep responses structured, clean, and readable. You can use markdown bullet points and paragraphs. ")
+            append("You are Claude, running in Claude for Samsung Galaxy (optimized for Galaxy A53 with a modern One UI design). ")
+            append("Deliver thoughtful, insightful, and clearly structured responses with markdown formatting, headings, bullet points, and code blocks. ")
             if (settings.systemNotes.isNotBlank()) {
                 append("\nUser Note: ").append(settings.systemNotes)
             }
@@ -262,38 +262,38 @@ class ClaudeApiService {
                     if (isTr) "Özet: $prompt" else "Summary: $prompt"
                 }
                 return ClaudeResult(
-                    replyText = if (isTr) "📌 [Kısaltıldı / S40 Ekranı]:\n$shortened" else "📌 [Shortened for S40]:\n$shortened",
+                    replyText = if (isTr) "📌 [Özet / Galaxy]:\n$shortened" else "📌 [Executive Summary]:\n$shortened",
                     sources = sources
                 )
             }
             "SIMPLIFY" -> {
                 return ClaudeResult(
                     replyText = if (isTr) {
-                        "💡 [Basitleştirilmiş Açıklama]:\nBunu şöyle düşünebilirsiniz: Karmaşık detayları bir kenara bırakırsak, ana fikir doğrudan çözüme odaklanmaktır. Telefonunuzdaki küçük bir Java ME uygulaması Claude'un gücüne bağlanıyor!"
+                        "💡 [Basitleştirilmiş Açıklama - ELI5]:\nBunu şöyle düşünebilirsiniz: Karmaşık teknik detayları basite indirgersek, ana fikir sonuca en doğrudan yoldan ulaşmaktır!"
                     } else {
-                        "💡 [Simplified / ELI5]:\nThink of it simply: instead of running heavy math on an old device, a lightweight messenger connects you directly to Claude's mind in the cloud!"
+                        "💡 [Simplified / ELI5]:\nThink of it simply: instead of navigating dense jargon, the core idea is solving the problem directly using intuitive building blocks!"
                     },
                     sources = sources
                 )
             }
             "TRANSLATE_TR" -> {
                 return ClaudeResult(
-                    replyText = "🇹🇷 [Türkçe Çeviri]:\n\"$prompt\"\n-> Harika bir gün! Nokia Series 40 arayüzü ile Claude yapay zekasına bağlandınız.",
+                    replyText = "🇹🇷 [Türkçe Çeviri]:\n\"$prompt\"\n-> Harika bir gün! Samsung Galaxy A53 için optimize edilen Claude yapay zekasına bağlandınız.",
                     sources = sources
                 )
             }
             "TRANSLATE_EN" -> {
                 return ClaudeResult(
-                    replyText = "🇬🇧 [English Translation]:\n\"$prompt\"\n-> Great experience! You are connected to Claude AI via the retro Nokia Series 40 interface.",
+                    replyText = "🇬🇧 [English Translation]:\n\"$prompt\"\n-> Great experience! You are connected to Claude AI on your modern Samsung Galaxy.",
                     sources = sources
                 )
             }
             "TODO" -> {
                 return ClaudeResult(
                     replyText = if (isTr) {
-                        "📋 [Takvim / Yapılacaklar Listesi]:\n• 1. Claude S40 ayarlarını kontrol et\n• 2. Galaxy A53 üzerinde T9 klavyeyi dene\n• 3. Emir Karşıyakalı'nın projesini yıldızla"
+                        "📋 [Galaxy Takvim & Görevler]:\n• 1. Claude Galaxy ayarlarını özelleştir\n• 2. Canlı web aramasını dene\n• 3. Yeni bir sohbet başlat"
                     } else {
-                        "📋 [Extracted Tasks]:\n• 1. Configure Claude S40 settings & API\n• 2. Practice T9 Multitap on Galaxy A53\n• 3. Star emir/claude-s40 on GitHub"
+                        "📋 [Extracted Tasks]:\n• 1. Review Claude Galaxy preferences\n• 2. Test live web search capabilities\n• 3. Organize daily schedule"
                     },
                     sources = sources
                 )

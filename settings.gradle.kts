@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Claude S40"
+rootProject.name = "Claude Galaxy"
 
 include(":app")

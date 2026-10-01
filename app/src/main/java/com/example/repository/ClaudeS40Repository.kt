@@ -6,10 +6,8 @@ import com.example.model.ApiProvider
 import com.example.model.AppSettings
 import com.example.model.ChatMessage
 import com.example.model.Conversation
-import com.example.model.KeyboardMode
+import com.example.model.GalaxyTheme
 import com.example.model.S40Task
-import com.example.model.S40Theme
-import com.example.model.S40ViewMode
 import com.example.model.SavedTextFile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,16 +45,11 @@ class ClaudeS40Repository(private val context: Context) {
         val model = prefs.getString("model_name", "claude-3-5-sonnet-20241022") ?: "claude-3-5-sonnet-20241022"
         val proxy = prefs.getString("proxy_url", "http://10.0.2.2:8080") ?: "http://10.0.2.2:8080"
         val lang = prefs.getString("language", "en") ?: "en"
-        val themeStr = prefs.getString("theme", S40Theme.SAPPHIRE_BLUE.name) ?: S40Theme.SAPPHIRE_BLUE.name
-        val theme = try { S40Theme.valueOf(themeStr) } catch (_: Exception) { S40Theme.SAPPHIRE_BLUE }
-        val viewModeStr = prefs.getString("view_mode", S40ViewMode.NOKIA_6300_DEVICE.name) ?: S40ViewMode.NOKIA_6300_DEVICE.name
-        val viewMode = try { S40ViewMode.valueOf(viewModeStr) } catch (_: Exception) { S40ViewMode.NOKIA_6300_DEVICE }
-        val kbModeStr = prefs.getString("kb_mode", KeyboardMode.T9_KEYPAD.name) ?: KeyboardMode.T9_KEYPAD.name
-        val kbMode = try { KeyboardMode.valueOf(kbModeStr) } catch (_: Exception) { KeyboardMode.T9_KEYPAD }
+        val themeStr = prefs.getString("theme", GalaxyTheme.AMOLED_BLACK.name) ?: GalaxyTheme.AMOLED_BLACK.name
+        val theme = try { GalaxyTheme.valueOf(themeStr) } catch (_: Exception) { GalaxyTheme.AMOLED_BLACK }
         val sound = prefs.getBoolean("sound_enabled", true)
         val vibrate = prefs.getBoolean("vibrate_enabled", true)
         val webSearch = prefs.getBoolean("web_search_enabled", false)
-        val fontSize = prefs.getInt("reading_font_size", 14)
         val sysNotes = prefs.getString("system_notes", "") ?: ""
 
         return AppSettings(
@@ -67,12 +60,9 @@ class ClaudeS40Repository(private val context: Context) {
             proxyUrl = proxy,
             language = lang,
             theme = theme,
-            viewMode = viewMode,
-            keyboardMode = kbMode,
             soundEnabled = sound,
             vibrateEnabled = vibrate,
             webSearchEnabled = webSearch,
-            readingFontSize = fontSize,
             systemNotes = sysNotes
         )
     }
@@ -86,12 +76,9 @@ class ClaudeS40Repository(private val context: Context) {
             putString("proxy_url", settings.proxyUrl)
             putString("language", settings.language)
             putString("theme", settings.theme.name)
-            putString("view_mode", settings.viewMode.name)
-            putString("kb_mode", settings.keyboardMode.name)
             putBoolean("sound_enabled", settings.soundEnabled)
             putBoolean("vibrate_enabled", settings.vibrateEnabled)
             putBoolean("web_search_enabled", settings.webSearchEnabled)
-            putInt("reading_font_size", settings.readingFontSize)
             putString("system_notes", settings.systemNotes)
             apply()
         }
@@ -99,18 +86,19 @@ class ClaudeS40Repository(private val context: Context) {
     }
 
     fun getActiveConversationId(): String {
+        val saved = prefs.getString("active_conversation_id", null)
+        if (!saved.isNullOrBlank()) {
+            return saved
+        }
         val existing = _conversationsFlow.value
         if (existing.isNotEmpty()) {
             return existing.first().id
         }
-        val newConv = Conversation(
-            id = UUID.randomUUID().toString(),
-            title = "Chat with Claude",
-            lastMessage = "Welcome to Claude S40",
-            updatedAt = System.currentTimeMillis()
-        )
-        saveConversation(newConv)
-        return newConv.id
+        return "default-chat"
+    }
+
+    fun saveActiveConversationId(id: String) {
+        prefs.edit().putString("active_conversation_id", id).apply()
     }
 
     private fun loadConversations(): List<Conversation> {
@@ -202,8 +190,9 @@ class ClaudeS40Repository(private val context: Context) {
                     id = "msg-1",
                     conversationId = "default-chat",
                     role = "assistant",
-                    content = "Welcome to Claude S40 for Samsung Galaxy A53! 📱✨\n\nInspired by Emir Karşıyakalı's iconic Nokia 6300 client, this port brings the complete retro Series 40 experience with tactile keypad feedback, paginated reading mode, message actions, and direct Claude AI connectivity.\n\nUse Left Softkey for Options, or start typing below!",
-                    timestamp = System.currentTimeMillis() - 120000
+                    content = "Welcome to Claude for Samsung Galaxy! ✨\n\nDesigned specifically for your Galaxy A53 with a modern Samsung One UI experience. You can chat with Claude, run live web searches, summarize long documents, translate into multiple languages, and organize tasks effortlessly.\n\nType your message below or pick one of the quick action chips to get started!",
+                    timestamp = System.currentTimeMillis() - 60000,
+                    agentName = "Claude 3.5 Sonnet"
                 )
             )
             persistMessages(conversationId, welcomeList)
