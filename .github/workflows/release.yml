@@ -1,0 +1,91 @@
+name: Build & Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '*'
+  release:
+    types: [published, created]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew || true
+
+      - name: Prepare environment file
+        run: |
+          cp .env.example .env || touch .env
+
+      - name: Build Debug APK
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew :app:assembleDebug --stacktrace
+          else
+            gradle :app:assembleDebug --stacktrace
+          fi
+
+      - name: Prepare APK Asset
+        run: |
+          mkdir -p release-assets
+          cp app/build/outputs/apk/debug/app-debug.apk release-assets/Claude-S40-Galaxy-A53.apk
+          ls -la release-assets/
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Claude-S40-Galaxy-A53-APK
+          path: release-assets/Claude-S40-Galaxy-A53.apk
+          retention-days: 30
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name || 'v1.0.0' }}
+          name: "Claude S40 for Galaxy A53 ${{ github.event.inputs.release_tag || github.ref_name || 'v1.0.0' }}"
+          body: |
+            ### Claude S40 — Android Release for Samsung Galaxy A53 📱
+
+            This release ports [emir/claude-s40](https://github.com/emir/claude-s40) to Android with full Nokia Series 40 styling, T9 keypad, haptic soundscapes, and direct Claude AI connectivity!
+
+            #### Download & Install:
+            - Download **`Claude-S40-Galaxy-A53.apk`** below to your phone and tap to install.
+
+            #### Features:
+            - 📱 **Nokia 6300 Retro Device Frame** + **Fullscreen S40 OS** dual mode
+            - ⌨️ **T9 Multitap Keypad** with character cycling & Android QWERTY toggle
+            - 🔊 **Nokia Dialpad Clicks & Morse Code SMS Chime**
+            - 📳 **Calibrated Tactile Haptic Pulses** for Galaxy A53
+            - 📖 **240x320 Paginated Reading Mode** for long Claude answers
+            - ⚡ **Message Actions**: Shorten, Simplify, Translate (TR/EN), Save .TXT, Add to To-Do
+            - 🌐 **Live Web Search** with citations
+            - 🔒 **Direct Anthropic Claude API** (3.5 Sonnet / 3.7 Sonnet) & Built-in Smart Engine
+          files: release-assets/Claude-S40-Galaxy-A53.apk
+          draft: false
+          prerelease: false
