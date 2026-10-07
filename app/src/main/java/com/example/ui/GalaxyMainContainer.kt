@@ -111,6 +111,7 @@ fun GalaxyMainContainer(
                             inputText = uiState.inputText,
                             isLoading = uiState.isLoading,
                             isListening = uiState.isListening,
+                            audioAmplitude = uiState.audioAmplitude,
                             speechTranscriptionNotice = uiState.speechTranscriptionNotice,
                             smartReplies = uiState.smartReplies,
                             webSearchEnabled = settings.webSearchEnabled,

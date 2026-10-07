@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -130,6 +131,7 @@ fun OneUiAgentSwitcherBottomSheet(
                         "eli5" -> Icons.Default.Lightbulb
                         "translator" -> Icons.Default.Language
                         "task_planner" -> Icons.Default.DateRange
+                        "local_gguf_host" -> Icons.Default.Memory
                         else -> Icons.Default.AutoAwesome
                     }
 
@@ -139,6 +141,7 @@ fun OneUiAgentSwitcherBottomSheet(
                         "eli5" -> OneUiCyan
                         "translator" -> OneUiRose
                         "task_planner" -> OneUiIndigo
+                        "local_gguf_host" -> Color(0xFF10B981)
                         else -> primaryColor
                     }
 

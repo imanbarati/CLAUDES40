@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -120,6 +121,7 @@ fun GalaxyAgentsScreen(
                     "Lightbulb" -> Icons.Default.Lightbulb
                     "Language" -> Icons.Default.Language
                     "DateRange" -> Icons.Default.DateRange
+                    "Memory" -> Icons.Default.Memory
                     else -> Icons.Default.AutoAwesome
                 }
 
@@ -128,7 +130,8 @@ fun GalaxyAgentsScreen(
                     "Search" -> Color(0xFF0284C7)
                     "Productivity" -> Color(0xFF10B981)
                     "Learning" -> Color(0xFF8B5CF6)
-                    "Language" -> Color(0xFFEC4899)
+                    "Languages" -> Color(0xFFEC4899)
+                    "Open Weights" -> Color(0xFF10B981)
                     else -> primaryColor
                 }
 

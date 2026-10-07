@@ -90,6 +90,7 @@ fun GalaxyChatScreen(
     inputText: String,
     isLoading: Boolean,
     isListening: Boolean,
+    audioAmplitude: Float = 0f,
     speechTranscriptionNotice: String?,
     smartReplies: List<String>,
     webSearchEnabled: Boolean,
@@ -229,7 +230,7 @@ fun GalaxyChatScreen(
             }
         }
 
-        // Live Voice Dictation Feedback Pill
+        // Live Voice Dictation Feedback Pill with AudioRecord Visualizer
         if (isListening || speechTranscriptionNotice != null) {
             Row(
                 modifier = Modifier
@@ -241,15 +242,16 @@ fun GalaxyChatScreen(
                     .padding(horizontal = 12.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val pulseSize = (10 + (audioAmplitude * 12)).coerceIn(10f, 22f).dp
                 Box(
                     modifier = Modifier
-                        .size(10.dp)
+                        .size(pulseSize)
                         .clip(CircleShape)
                         .background(OneUiRose)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = speechTranscriptionNotice ?: "Listening for $activeAgentName...",
+                    text = speechTranscriptionNotice ?: "Recording audio with AudioRecord for $activeAgentName...",
                     color = OneUiRose,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,

@@ -44,6 +44,9 @@ class ClaudeS40Repository(private val context: Context) {
         val provider = try { ApiProvider.valueOf(providerStr) } catch (_: Exception) { ApiProvider.BUILTIN_SMART }
         val model = prefs.getString("model_name", "claude-3-5-sonnet-20241022") ?: "claude-3-5-sonnet-20241022"
         val proxy = prefs.getString("proxy_url", "http://10.0.2.2:8080") ?: "http://10.0.2.2:8080"
+        val localEndpoint = prefs.getString("local_endpoint_url", "http://192.168.1.100:11434/v1") ?: "http://192.168.1.100:11434/v1"
+        val localModel = prefs.getString("local_model_name", "llama3.2:latest") ?: "llama3.2:latest"
+        val localGgufPower = prefs.getBoolean("enable_local_gguf_power", false)
         val lang = prefs.getString("language", "en") ?: "en"
         val themeStr = prefs.getString("theme", GalaxyTheme.AMOLED_BLACK.name) ?: GalaxyTheme.AMOLED_BLACK.name
         val theme = try { GalaxyTheme.valueOf(themeStr) } catch (_: Exception) { GalaxyTheme.AMOLED_BLACK }
@@ -58,6 +61,9 @@ class ClaudeS40Repository(private val context: Context) {
             apiProvider = provider,
             modelName = model,
             proxyUrl = proxy,
+            localEndpointUrl = localEndpoint,
+            localModelName = localModel,
+            enableLocalGgufPower = localGgufPower,
             language = lang,
             theme = theme,
             soundEnabled = sound,
@@ -74,6 +80,9 @@ class ClaudeS40Repository(private val context: Context) {
             putString("api_provider", settings.apiProvider.name)
             putString("model_name", settings.modelName)
             putString("proxy_url", settings.proxyUrl)
+            putString("local_endpoint_url", settings.localEndpointUrl)
+            putString("local_model_name", settings.localModelName)
+            putBoolean("enable_local_gguf_power", settings.enableLocalGgufPower)
             putString("language", settings.language)
             putString("theme", settings.theme.name)
             putBoolean("sound_enabled", settings.soundEnabled)

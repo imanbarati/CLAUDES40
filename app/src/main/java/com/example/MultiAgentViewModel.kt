@@ -3,9 +3,17 @@ package com.example
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.api.AgenticTaskRequest
+import com.example.api.AgenticTaskType
 import com.example.api.ClaudeApiService
+import com.example.api.NvidiaHardwareNodeService
+import com.example.audio.AudioCaptureHelper
+import com.example.audio.AudioCaptureState
+import com.example.audio.AudioRecordHelper
 import com.example.audio.NokiaSoundPlayer
+import com.example.llm.LocalGgufModelLoader
 import com.example.model.AgentDefinition
+import com.example.model.ApiProvider
 import com.example.model.AppSettings
 import com.example.model.ChatMessage
 import com.example.model.Conversation
@@ -45,6 +53,8 @@ data class MultiAgentUiState(
     val inputText: String = "",
     val isLoading: Boolean = false,
     val isListening: Boolean = false,
+    val audioAmplitude: Float = 0f,
+    val isVoiceDetected: Boolean = false,
     val speechTranscriptionNotice: String? = null,
     val selectedMessageForAction: ChatMessage? = null,
     val isActionSheetOpen: Boolean = false,
@@ -75,6 +85,16 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
 
     // Samsung One UI Feedback & Audio Manager
     val feedbackManager = NokiaSoundPlayer(application)
+
+    // AudioCaptureHelper using Android AudioRecord API for low-level audio capture & amplitude analysis
+    val audioCaptureHelper = AudioCaptureHelper(application)
+    val audioRecordHelper = audioCaptureHelper
+
+    // On-device private GGUF model loader using llama.cpp Android port (via JNI)
+    val localGgufModelLoader = LocalGgufModelLoader(application)
+
+    // Remote NVIDIA hardware node service for offloading heavy agentic tasks via REST API
+    val nvidiaNodeService = NvidiaHardwareNodeService()
 
     // SpeechRecognizer for Dictation
     val speechRecognizer = OneUiSpeechRecognizer(application)
@@ -150,6 +170,16 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
             accentColorHex = 0xFF6366F1,
             suggestionChips = listOf("Plan weekly workout", "Study schedule", "Project release checklist"),
             defaultPrompt = "Create a structured daily checklist for mastering Jetpack Compose and Coroutines."
+        ),
+        AgentInteractionState(
+            id = "local_gguf_host",
+            name = "Local GGUF / Device AI",
+            tag = "Open Weights",
+            description = "Connects to your local LAN GPU (Ollama, llama.cpp, NVIDIA NIM, GhostBrain, PirateFace open models) without cloud fees or data tracking.",
+            placeholder = "Ask your local open-source model...",
+            accentColorHex = 0xFF10B981,
+            suggestionChips = listOf("Run Llama 3.2 3B Test", "DeepSeek-R1 Local Reasoning", "GhostBrain Server Ping"),
+            defaultPrompt = "Analyze this system architecture using local GPU inference power."
         )
     )
 
@@ -165,6 +195,7 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
                 "eli5" -> "Lightbulb"
                 "translator" -> "Language"
                 "task_planner" -> "DateRange"
+                "local_gguf_host" -> "Memory"
                 else -> "AutoAwesome"
             },
             defaultPrompt = it.defaultPrompt,
@@ -180,6 +211,18 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
     init {
         val initialConvId = repository.getActiveConversationId()
         observeConversationMessages(initialConvId)
+
+        // Observe real-time audio capture state & voice activity from AudioRecord API
+        viewModelScope.launch {
+            audioCaptureHelper.captureState.collect { state ->
+                if (_uiState.value.isListening && state is AudioCaptureState.Capturing) {
+                    _uiState.value = _uiState.value.copy(
+                        audioAmplitude = state.amplitude,
+                        isVoiceDetected = state.isVoiceDetected
+                    )
+                }
+            }
+        }
 
         // Observe speech recognition state for UI feedback
         viewModelScope.launch {
@@ -198,23 +241,30 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
                     }
                     is SpeechState.Result -> {
                         appendSpeechText(state.text)
+                        audioCaptureHelper.stopRecording()
                         _uiState.value = _uiState.value.copy(
                             isListening = false,
+                            audioAmplitude = 0f,
                             speechTranscriptionNotice = null
                         )
                     }
                     is SpeechState.Error -> {
+                        audioCaptureHelper.stopRecording()
                         _uiState.value = _uiState.value.copy(
                             isListening = false,
+                            audioAmplitude = 0f,
                             speechTranscriptionNotice = null,
                             statusNotice = state.message
                         )
                     }
                     is SpeechState.Idle -> {
-                        _uiState.value = _uiState.value.copy(
-                            isListening = false,
-                            speechTranscriptionNotice = null
-                        )
+                        if (!_uiState.value.isListening) {
+                            audioCaptureHelper.stopRecording()
+                            _uiState.value = _uiState.value.copy(
+                                audioAmplitude = 0f,
+                                speechTranscriptionNotice = null
+                            )
+                        }
                     }
                 }
             }
@@ -326,11 +376,25 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
         feedbackManager.playKeyClick(settings.soundEnabled, false)
 
         if (_uiState.value.isListening) {
+            audioCaptureHelper.stop()
             speechRecognizer.stopListening()
+            _uiState.value = _uiState.value.copy(
+                isListening = false,
+                audioAmplitude = 0f,
+                isVoiceDetected = false,
+                speechTranscriptionNotice = null
+            )
         } else {
+            // Start audio capture using AudioCaptureHelper & AudioRecord API
+            audioCaptureHelper.start()
+            // Start speech recognizer for voice-to-text transcription
             speechRecognizer.startListening(languageCode = settings.language) { text ->
                 appendSpeechText(text)
             }
+            _uiState.value = _uiState.value.copy(
+                isListening = true,
+                speechTranscriptionNotice = "Listening with AudioRecord for ${_uiState.value.activeAgent}..."
+            )
         }
     }
 
@@ -376,25 +440,38 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
                 else -> null
             }
 
-            val effectiveSettings = if (currentAgentId == "web_search") {
-                settings.copy(webSearchEnabled = true)
-            } else {
-                settings
-            }
+            val replyText: String
+            val sources: List<String>
+            val agentName: String
 
-            val result = apiService.sendMessage(
-                history = historyAfterUser,
-                userPrompt = text,
-                settings = effectiveSettings,
-                actionType = actionType
-            )
+            if (currentAgentId == "local_gguf_host" && localGgufModelLoader.isLoaded.value) {
+                replyText = localGgufModelLoader.generateSync(text)
+                sources = listOf("On-Device GGUF • llama.cpp JNI Private Inference")
+                agentName = localGgufModelLoader.activeModelName.value ?: "Local GGUF Model"
+            } else {
+                val effectiveSettings = when (currentAgentId) {
+                    "web_search" -> settings.copy(webSearchEnabled = true)
+                    "local_gguf_host" -> settings.copy(apiProvider = ApiProvider.LOCAL_NETWORK, enableLocalGgufPower = true)
+                    else -> settings
+                }
+
+                val result = apiService.sendMessage(
+                    history = historyAfterUser,
+                    userPrompt = text,
+                    settings = effectiveSettings,
+                    actionType = actionType
+                )
+                replyText = result.replyText
+                sources = result.sources
+                agentName = _uiState.value.activeAgent
+            }
 
             val assistantMsg = ChatMessage(
                 conversationId = convId,
                 role = "assistant",
-                content = result.replyText,
-                sources = result.sources,
-                agentName = _uiState.value.activeAgent
+                content = replyText,
+                sources = sources,
+                agentName = agentName
             )
 
             // Persist assistant message to Room DB
@@ -405,12 +482,65 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
+    fun offloadAgenticTaskToNvidia(taskType: AgenticTaskType, prompt: String) {
+        val settings = settingsFlow.value
+        val convId = _uiState.value.activeConversationId
+        _uiState.value = _uiState.value.copy(
+            isLoading = true,
+            statusNotice = "Dispatching to Remote NVIDIA Node (${taskType.displayName})..."
+        )
+
+        viewModelScope.launch {
+            val userMsg = ChatMessage(
+                conversationId = convId,
+                role = "user",
+                content = "⚡ [NVIDIA Node Offload]: ${taskType.displayName}\nPrompt: $prompt"
+            )
+            messageRepository.saveMessage(userMsg)
+
+            val request = AgenticTaskRequest(
+                taskType = taskType,
+                prompt = prompt,
+                targetModel = settings.localModelName.ifBlank { NvidiaHardwareNodeService.DEFAULT_MODEL },
+                customSystemNotes = settings.systemNotes
+            )
+
+            val result = nvidiaNodeService.offloadAgenticTask(
+                request = request,
+                nodeUrl = settings.localEndpointUrl
+            )
+
+            val assistantMsg = ChatMessage(
+                conversationId = convId,
+                role = "assistant",
+                content = result.finalOutput,
+                sources = result.intermediateSteps,
+                agentName = result.gpuHardwareNode
+            )
+            messageRepository.saveMessage(assistantMsg)
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                statusNotice = if (result.isOffloadedSuccessfully) "Completed on NVIDIA Tensor Cores" else "Fallback processed"
+            )
+            feedbackManager.playMessageReceivedSms(settings.soundEnabled, settings.vibrateEnabled)
+        }
+    }
+
     fun applyMessageAction(actionType: String, message: ChatMessage) {
         val settings = settingsFlow.value
         feedbackManager.playKeyClick(settings.soundEnabled, settings.vibrateEnabled)
         _uiState.value = _uiState.value.copy(isActionSheetOpen = false, selectedMessageForAction = null)
 
         when (actionType) {
+            "NVIDIA_DEEP_RESEARCH" -> {
+                offloadAgenticTaskToNvidia(AgenticTaskType.DEEP_RESEARCH, message.content)
+            }
+            "NVIDIA_CODE_AUDIT" -> {
+                offloadAgenticTaskToNvidia(AgenticTaskType.CODE_ANALYSIS, message.content)
+            }
+            "NVIDIA_CONSENSUS" -> {
+                offloadAgenticTaskToNvidia(AgenticTaskType.MULTI_AGENT_CONSENSUS, message.content)
+            }
             "SAVE_NOTE" -> {
                 val saved = repository.saveTextFile(
                     title = "CLAUDE_${System.currentTimeMillis() % 1000}",
@@ -535,6 +665,8 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
 
     override fun onCleared() {
         super.onCleared()
+        localGgufModelLoader.unloadModel()
+        audioCaptureHelper.release()
         speechRecognizer.destroy()
         feedbackManager.release()
     }

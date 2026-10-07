@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.ContentCopy
@@ -25,8 +26,10 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -208,6 +211,38 @@ fun OneUiActionSheet(
                 textColor = textColor
             ) {
                 onAction("PIN")
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0))
+
+            ActionRow(
+                title = "⚡ Offload Deep Research (NVIDIA Node)",
+                desc = "Offload recursive research to remote GPU tensor cores",
+                icon = Icons.Default.AutoAwesome,
+                color = Color(0xFF10B981),
+                textColor = textColor
+            ) {
+                onAction("NVIDIA_DEEP_RESEARCH")
+            }
+
+            ActionRow(
+                title = "🛡️ Offload Code & Security Audit (NVIDIA Node)",
+                desc = "AST parsing, vulnerability scan, and architectural refactoring",
+                icon = Icons.Default.Tune,
+                color = Color(0xFF0284C7),
+                textColor = textColor
+            ) {
+                onAction("NVIDIA_CODE_AUDIT")
+            }
+
+            ActionRow(
+                title = "👥 Multi-Agent Consensus Debate (NVIDIA Node)",
+                desc = "3-persona expert debate & consensus synthesis",
+                icon = Icons.Default.Memory,
+                color = Color(0xFF8B5CF6),
+                textColor = textColor
+            ) {
+                onAction("NVIDIA_CONSENSUS")
             }
 
             Spacer(modifier = Modifier.height(16.dp))

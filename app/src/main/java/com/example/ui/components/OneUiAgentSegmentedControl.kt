@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -71,7 +72,8 @@ fun OneUiAgentSegmentedControl(
         SegmentAgentItem("summarizer", "Summarizer", Icons.Default.Compress, OneUiAmber),
         SegmentAgentItem("eli5", "Explain Simply", Icons.Default.Lightbulb, OneUiCyan),
         SegmentAgentItem("translator", "Translator", Icons.Default.Language, OneUiRose),
-        SegmentAgentItem("task_planner", "Task Manager", Icons.Default.DateRange, OneUiIndigo)
+        SegmentAgentItem("task_planner", "Task Manager", Icons.Default.DateRange, OneUiIndigo),
+        SegmentAgentItem("local_gguf_host", "Local GGUF", Icons.Default.Memory, Color(0xFF10B981))
     )
 
     val containerBg = if (isDark) Color(0xFF161822) else Color(0xFFEDF2F7)

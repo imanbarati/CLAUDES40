@@ -8,6 +8,7 @@ import java.util.UUID
 enum class ApiProvider {
     ANTHROPIC,
     GEMINI,
+    LOCAL_NETWORK, // Local GGUF / Network AI (Ollama, llama.cpp, NVIDIA NIM, GhostBrain)
     CUSTOM_PROXY,
     BUILTIN_SMART
 }
@@ -90,12 +91,68 @@ data class AppSettings(
     val apiProvider: ApiProvider = ApiProvider.BUILTIN_SMART,
     val modelName: String = "claude-3-5-sonnet-20241022",
     val proxyUrl: String = "http://10.0.2.2:8080",
+    val localEndpointUrl: String = "http://192.168.1.100:11434/v1", // Ollama / llama.cpp / NVIDIA / GhostBrain
+    val localModelName: String = "llama3.2:latest",
+    val enableLocalGgufPower: Boolean = false,
     val language: String = "en", // "en" or "tr"
     val theme: GalaxyTheme = GalaxyTheme.AMOLED_BLACK,
     val soundEnabled: Boolean = true,
     val vibrateEnabled: Boolean = true,
     val webSearchEnabled: Boolean = false,
     val systemNotes: String = ""
+)
+
+data class OpenSourceModelInfo(
+    val id: String,
+    val name: String,
+    val parameterSize: String,
+    val recommendedGguf: String, // e.g. "Q4_K_M (Fastest on Mobile/Local)"
+    val ollamaTag: String,
+    val description: String,
+    val sourceCatalog: String = "PirateFace / HuggingFace"
+)
+
+val DEFAULT_OPEN_SOURCE_MODELS = listOf(
+    OpenSourceModelInfo(
+        id = "llama3_2_3b",
+        name = "Meta Llama 3.2",
+        parameterSize = "3B Parameters",
+        recommendedGguf = "Q4_K_M (1.9 GB)",
+        ollamaTag = "llama3.2:latest",
+        description = "Optimized for edge and mobile reasoning, summarization, and task planning."
+    ),
+    OpenSourceModelInfo(
+        id = "deepseek_r1_7b",
+        name = "DeepSeek-R1 Distill",
+        parameterSize = "7B / 8B Parameters",
+        recommendedGguf = "Q4_K_M (4.7 GB)",
+        ollamaTag = "deepseek-r1:7b",
+        description = "Breakthrough open reasoning model with step-by-step mathematical & coding chain-of-thought."
+    ),
+    OpenSourceModelInfo(
+        id = "mistral_7b",
+        name = "Mistral 7B Instruct v0.3",
+        parameterSize = "7B Parameters",
+        recommendedGguf = "Q5_K_M (5.1 GB)",
+        ollamaTag = "mistral:latest",
+        description = "Balanced, versatile open-weights powerhouse for creative writing and multilingual translation."
+    ),
+    OpenSourceModelInfo(
+        id = "qwen2_5_coder",
+        name = "Qwen 2.5 Coder",
+        parameterSize = "7B Parameters",
+        recommendedGguf = "Q4_K_M (4.5 GB)",
+        ollamaTag = "qwen2.5-coder:latest",
+        description = "State-of-the-art open code generation model supporting Kotlin, Python, and Android development."
+    ),
+    OpenSourceModelInfo(
+        id = "phi4_14b",
+        name = "Microsoft Phi-4",
+        parameterSize = "14B Parameters",
+        recommendedGguf = "Q4_K_M (8.9 GB)",
+        ollamaTag = "phi4:latest",
+        description = "High-density synthetic reasoning model exceeding larger LLMs on STEM benchmarks."
+    )
 )
 
 data class AgentDefinition(

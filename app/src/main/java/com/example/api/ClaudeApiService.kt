@@ -83,8 +83,102 @@ class ClaudeApiService {
             }
         }
 
+        // Local GGUF / Over-the-Network Device AI (Ollama, llama.cpp, NVIDIA NIM, GhostBrain)
+        if (settings.apiProvider == ApiProvider.LOCAL_NETWORK || settings.enableLocalGgufPower) {
+            try {
+                return@withContext callLocalNetworkApi(history, effectivePrompt, settings)
+            } catch (e: Exception) {
+                return@withContext ClaudeResult(
+                    replyText = "⚠️ Unable to reach Local Network AI Host at ${settings.localEndpointUrl}:\n${e.localizedMessage ?: "Connection refused"}\n\n💡 Troubleshooting Tips:\n• Verify that your PC/Mac/NVIDIA device is on the same local Wi-Fi.\n• If using Ollama, set environment variable OLLAMA_ORIGINS=\"*\" and OLLAMA_HOST=\"0.0.0.0:11434\".\n• Ensure port 11434, 8080, or 8000 is open in your local firewall.\n• Check model name in Settings (e.g. \"${settings.localModelName}\").",
+                    error = e.localizedMessage
+                )
+            }
+        }
+
         // Default: Built-in Smart Claude S40 Engine
         return@withContext runBuiltinClaudeEngine(effectivePrompt, settings, actionType)
+    }
+
+    suspend fun testLocalConnection(endpointUrl: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val startTime = System.currentTimeMillis()
+        try {
+            val baseUrl = endpointUrl.trim().trimEnd('/')
+            val testUrl = if (baseUrl.endsWith("/v1")) "$baseUrl/models" else "$baseUrl/v1/models"
+            val request = Request.Builder().url(testUrl).get().build()
+            client.newCall(request).execute().use { response ->
+                val elapsed = System.currentTimeMillis() - startTime
+                if (response.isSuccessful) {
+                    Pair(true, "✅ Connected successfully (${elapsed}ms) • Local AI host online")
+                } else {
+                    Pair(false, "Server responded with HTTP ${response.code}")
+                }
+            }
+        } catch (e: Exception) {
+            Pair(false, "❌ Connection failed: ${e.localizedMessage ?: "Host unreachable"}")
+        }
+    }
+
+    private fun callLocalNetworkApi(
+        history: List<ChatMessage>,
+        prompt: String,
+        settings: AppSettings
+    ): ClaudeResult {
+        val root = JSONObject()
+        val model = settings.localModelName.ifBlank { "llama3.2:latest" }
+        root.put("model", model)
+        root.put("stream", false)
+
+        val messagesArray = JSONArray()
+
+        val systemPrompt = buildString {
+            append("You are a helpful AI assistant operating via a local open-source model ($model) on a local network device. ")
+            if (settings.language == "tr") {
+                append("Yanıtlarını daima doğal, akıcı bir Türkçe ile ver. ")
+            }
+            if (settings.systemNotes.isNotBlank()) {
+                append("\nUser Notes: ${settings.systemNotes}")
+            }
+        }
+        val systemObj = JSONObject()
+        systemObj.put("role", "system")
+        systemObj.put("content", systemPrompt)
+        messagesArray.put(systemObj)
+
+        history.takeLast(6).forEach { msg ->
+            val m = JSONObject()
+            m.put("role", if (msg.role == "assistant") "assistant" else "user")
+            m.put("content", msg.content)
+            messagesArray.put(m)
+        }
+
+        val userObj = JSONObject()
+        userObj.put("role", "user")
+        userObj.put("content", prompt)
+        messagesArray.put(userObj)
+
+        root.put("messages", messagesArray)
+
+        val baseUrl = settings.localEndpointUrl.trim().trimEnd('/')
+        val url = if (baseUrl.endsWith("/chat/completions")) baseUrl else "$baseUrl/chat/completions"
+
+        val request = Request.Builder()
+            .url(url)
+            .post(root.toString().toRequestBody(jsonMediaType))
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val errBody = response.body?.string() ?: ""
+                throw IOException("Local AI server returned HTTP ${response.code}: $errBody")
+            }
+            val body = response.body?.string() ?: throw IOException("Empty response from local AI host")
+            val json = JSONObject(body)
+            val choices = json.optJSONArray("choices")
+            val messageObj = choices?.optJSONObject(0)?.optJSONObject("message")
+            val reply = messageObj?.optString("content") ?: json.optString("response", "No response content")
+
+            return ClaudeResult(replyText = reply)
+        }
     }
 
     private fun callAnthropicApi(
