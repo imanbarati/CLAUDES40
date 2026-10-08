@@ -4,24 +4,32 @@ import android.content.Context
 import com.example.data.local.AppDatabase
 import com.example.data.local.dao.ChatMessageDao
 import com.example.data.local.dao.ConversationDao
+import com.example.data.local.dao.TaskDao
 import com.example.data.local.entity.ChatMessageEntity
 import com.example.data.local.entity.ConversationEntity
+import com.example.data.local.entity.TaskEntity
 import com.example.model.ChatMessage
 import com.example.model.Conversation
+import com.example.model.S40Task
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MessageRepository(
     private val conversationDao: ConversationDao,
-    private val chatMessageDao: ChatMessageDao
+    private val chatMessageDao: ChatMessageDao,
+    private val taskDao: TaskDao
 ) {
     constructor(context: Context) : this(
         AppDatabase.getInstance(context).conversationDao(),
-        AppDatabase.getInstance(context).chatMessageDao()
+        AppDatabase.getInstance(context).chatMessageDao(),
+        AppDatabase.getInstance(context).taskDao()
     )
 
     init {
@@ -30,18 +38,33 @@ class MessageRepository(
         }
     }
 
+    // --- Conversations ---
     val conversationsFlow: Flow<List<Conversation>> = conversationDao.getAllConversations().map { list ->
         list.map { it.toDomain() }
     }
 
+    suspend fun getConversationsSync(): List<Conversation> = withContext(Dispatchers.IO) {
+        conversationDao.getAllConversationsSync().map { it.toDomain() }
+    }
+
+    suspend fun saveConversation(conversation: Conversation) = withContext(Dispatchers.IO) {
+        conversationDao.insertConversation(ConversationEntity.fromDomain(conversation))
+    }
+
+    suspend fun deleteConversation(id: String) = withContext(Dispatchers.IO) {
+        chatMessageDao.deleteMessagesByConversation(id)
+        conversationDao.deleteConversationById(id)
+    }
+
+    suspend fun togglePinConversation(id: String) = withContext(Dispatchers.IO) {
+        conversationDao.togglePin(id)
+    }
+
+    // --- Messages ---
     fun getMessagesFlow(conversationId: String): Flow<List<ChatMessage>> {
         return chatMessageDao.getMessagesByConversation(conversationId).map { list ->
             list.map { it.toDomain() }
         }
-    }
-
-    suspend fun getConversationsSync(): List<Conversation> = withContext(Dispatchers.IO) {
-        conversationDao.getAllConversationsSync().map { it.toDomain() }
     }
 
     suspend fun getMessagesSync(conversationId: String): List<ChatMessage> = withContext(Dispatchers.IO) {
@@ -73,22 +96,37 @@ class MessageRepository(
         chatMessageDao.deleteMessageById(id)
     }
 
-    suspend fun saveConversation(conversation: Conversation) = withContext(Dispatchers.IO) {
-        conversationDao.insertConversation(ConversationEntity.fromDomain(conversation))
+    // --- Room Task Storage ---
+    val tasksFlow: Flow<List<S40Task>> = taskDao.getAllTasks().map { list ->
+        list.map { it.toDomain() }
     }
 
-    suspend fun deleteConversation(id: String) = withContext(Dispatchers.IO) {
-        chatMessageDao.deleteMessagesByConversation(id)
-        conversationDao.deleteConversationById(id)
+    suspend fun getTasksSync(): List<S40Task> = withContext(Dispatchers.IO) {
+        taskDao.getAllTasksSync().map { it.toDomain() }
     }
 
-    suspend fun togglePinConversation(id: String) = withContext(Dispatchers.IO) {
-        conversationDao.togglePin(id)
+    suspend fun addTask(title: String, details: String = "", dateStr: String = ""): S40Task = withContext(Dispatchers.IO) {
+        val effectiveDate = if (dateStr.isNotBlank()) dateStr else SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
+        val task = S40Task(
+            title = title,
+            details = details,
+            dateStr = effectiveDate
+        )
+        taskDao.insertTask(TaskEntity.fromDomain(task))
+        task
+    }
+
+    suspend fun toggleTask(id: String) = withContext(Dispatchers.IO) {
+        taskDao.toggleTaskCompletion(id)
+    }
+
+    suspend fun deleteTask(id: String) = withContext(Dispatchers.IO) {
+        taskDao.deleteTaskById(id)
     }
 
     private suspend fun seedInitialDataIfEmpty() = withContext(Dispatchers.IO) {
-        val count = conversationDao.getConversationCount()
-        if (count == 0) {
+        val convCount = conversationDao.getConversationCount()
+        if (convCount == 0) {
             val defaultConv = Conversation(
                 id = "default-chat",
                 title = "Chat with Claude",
@@ -99,6 +137,28 @@ class MessageRepository(
             )
             conversationDao.insertConversation(ConversationEntity.fromDomain(defaultConv))
             seedDefaultChatMessages()
+        }
+
+        val taskCount = taskDao.getTaskCount()
+        if (taskCount == 0) {
+            val dateStr = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
+            val defaultTasks = listOf(
+                TaskEntity(
+                    id = "task-1",
+                    title = "Try voice dictation with AudioRecord API",
+                    details = "Tap microphone button to capture speech with live amplitude visualizer",
+                    dateStr = dateStr,
+                    isCompleted = false
+                ),
+                TaskEntity(
+                    id = "task-2",
+                    title = "Explore AI Agents Hub & Local GGUF",
+                    details = "Switch between Claude 3.5, Summarizer, Translator, and Llama 3.2 local models",
+                    dateStr = dateStr,
+                    isCompleted = false
+                )
+            )
+            taskDao.insertTasks(defaultTasks)
         }
     }
 

@@ -7,18 +7,21 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.data.local.dao.ChatMessageDao
 import com.example.data.local.dao.ConversationDao
+import com.example.data.local.dao.TaskDao
 import com.example.data.local.entity.ChatMessageEntity
 import com.example.data.local.entity.ConversationEntity
+import com.example.data.local.entity.TaskEntity
 
 @Database(
-    entities = [ConversationEntity::class, ChatMessageEntity::class],
-    version = 1,
+    entities = [ConversationEntity::class, ChatMessageEntity::class, TaskEntity::class],
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun conversationDao(): ConversationDao
     abstract fun chatMessageDao(): ChatMessageDao
+    abstract fun taskDao(): TaskDao
 
     companion object {
         @Volatile

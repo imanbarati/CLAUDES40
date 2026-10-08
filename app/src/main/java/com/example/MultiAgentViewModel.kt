@@ -104,7 +104,10 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
 
     val settingsFlow: StateFlow<AppSettings> = repository.settingsFlow
     val savedFilesFlow: StateFlow<List<SavedTextFile>> = repository.savedFilesFlow
-    val tasksFlow: StateFlow<List<S40Task>> = repository.tasksFlow
+    
+    // Room-backed reactive tasks stream
+    val tasksFlow: StateFlow<List<S40Task>> = messageRepository.tasksFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Room-backed reactive conversation stream
     val conversationsFlow: StateFlow<List<Conversation>> = messageRepository.conversationsFlow
@@ -555,10 +558,12 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
                 feedbackManager.playMessageReceivedSms(settings.soundEnabled, settings.vibrateEnabled)
             }
             "ADD_TASK" -> {
-                repository.addTask(
-                    title = message.content.take(35) + "...",
-                    details = message.content
-                )
+                viewModelScope.launch {
+                    messageRepository.addTask(
+                        title = message.content.take(35) + "...",
+                        details = message.content
+                    )
+                }
                 _uiState.value = _uiState.value.copy(statusNotice = "Added to Galaxy Tasks & Calendar!")
                 feedbackManager.playMessageReceivedSms(settings.soundEnabled, settings.vibrateEnabled)
             }
@@ -652,6 +657,24 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
     fun togglePinConversation(id: String) {
         viewModelScope.launch {
             messageRepository.togglePinConversation(id)
+        }
+    }
+
+    fun addTask(title: String, details: String = "", dateStr: String = "") {
+        viewModelScope.launch {
+            messageRepository.addTask(title, details, dateStr)
+        }
+    }
+
+    fun toggleTask(id: String) {
+        viewModelScope.launch {
+            messageRepository.toggleTask(id)
+        }
+    }
+
+    fun deleteTask(id: String) {
+        viewModelScope.launch {
+            messageRepository.deleteTask(id)
         }
     }
 
