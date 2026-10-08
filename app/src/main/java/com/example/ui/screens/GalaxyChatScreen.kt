@@ -98,6 +98,7 @@ fun GalaxyChatScreen(
     activeAgentName: String,
     theme: GalaxyTheme,
     statusNotice: String?,
+    modelTestSuite: com.example.model.ModelSelfTestSuite = com.example.model.ModelSelfTestSuite(),
     onInputTextChange: (String) -> Unit,
     onSendMessage: (String?) -> Unit,
     onSmartReplySelected: (String) -> Unit,
@@ -157,6 +158,27 @@ fun GalaxyChatScreen(
                     color = Color(0xFF713F12),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
+                )
+            }
+        } else if (modelTestSuite.isRunning) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(theme.primaryHex).copy(alpha = 0.12f))
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(12.dp),
+                    color = Color(theme.primaryHex),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Auto-testing AI models (${modelTestSuite.totalTested}/${modelTestSuite.tests.size})...",
+                    color = Color(theme.primaryHex),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }

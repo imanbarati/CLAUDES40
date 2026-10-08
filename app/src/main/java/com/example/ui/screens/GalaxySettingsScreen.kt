@@ -60,12 +60,16 @@ import com.example.model.ApiProvider
 import com.example.model.AppSettings
 import com.example.model.DEFAULT_OPEN_SOURCE_MODELS
 import com.example.model.GalaxyTheme
+import com.example.model.ModelSelfTestSuite
+import com.example.model.ModelTestStatus
 import kotlinx.coroutines.launch
 
 @Composable
 fun GalaxySettingsScreen(
     settings: AppSettings,
     onSaveSettings: (AppSettings) -> Unit,
+    modelTestSuite: ModelSelfTestSuite = ModelSelfTestSuite(),
+    onRunSelfTests: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var apiKey by remember { mutableStateOf(settings.apiKey) }
@@ -561,6 +565,147 @@ fun GalaxySettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 3
             )
+        }
+
+        // Automatic AI Models Diagnostics & Self-Test Suite
+        OneUiSettingsSection(title = "AI Models Self-Test Diagnostics", icon = Icons.Default.Check, theme = theme) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Automated verification suite tests local GGUF models, remote NVIDIA nodes, and cloud engines for offline and live capability.",
+                    color = Color(0xFF94A3B8),
+                    fontSize = 12.sp
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = if (modelTestSuite.isRunning) "Running automated test..." else modelTestSuite.summaryText,
+                            color = if (modelTestSuite.failureCount > 0) Color(0xFFEF4444) else Color(0xFF10B981),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "${modelTestSuite.totalTested} of ${modelTestSuite.tests.size} models evaluated",
+                            color = Color(0xFF64748B),
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Button(
+                        onClick = onRunSelfTests,
+                        enabled = !modelTestSuite.isRunning,
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        if (modelTestSuite.isRunning) {
+                            CircularProgressIndicator(modifier = Modifier.size(14.dp), color = Color.White, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Testing...", fontSize = 11.sp)
+                        } else {
+                            Text("Re-test Models", fontSize = 11.sp)
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = cardBorder)
+
+                modelTestSuite.tests.forEach { test ->
+                    val statusColor = when (test.status) {
+                        ModelTestStatus.SUCCESS -> Color(0xFF10B981)
+                        ModelTestStatus.WARNING -> Color(0xFFF59E0B)
+                        ModelTestStatus.FAILED -> Color(0xFFEF4444)
+                        ModelTestStatus.TESTING -> primaryColor
+                        ModelTestStatus.IDLE -> Color(0xFF94A3B8)
+                    }
+
+                    val statusIcon = when (test.status) {
+                        ModelTestStatus.SUCCESS -> "✓"
+                        ModelTestStatus.WARNING -> "ℹ"
+                        ModelTestStatus.FAILED -> "✗"
+                        ModelTestStatus.TESTING -> "●"
+                        ModelTestStatus.IDLE -> "○"
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isDark) Color(0xFF0F172A) else Color(0xFFF8FAFC))
+                            .border(1.dp, cardBorder, RoundedCornerShape(10.dp))
+                            .padding(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clip(CircleShape)
+                                        .background(statusColor.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = statusIcon,
+                                        color = statusColor,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = test.name,
+                                        color = textColor,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = test.provider,
+                                        color = Color(0xFF64748B),
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+
+                            if (test.latencyMs > 0) {
+                                Text(
+                                    text = "${test.latencyMs}ms",
+                                    color = Color(0xFF64748B),
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+
+                        if (test.message != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = test.message,
+                                color = statusColor,
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        if (test.responsePreview != null) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = test.responsePreview,
+                                color = Color(0xFF64748B),
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         // About & Version Info

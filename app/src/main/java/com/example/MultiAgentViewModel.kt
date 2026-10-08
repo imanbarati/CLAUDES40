@@ -19,12 +19,14 @@ import com.example.model.ChatMessage
 import com.example.model.Conversation
 import com.example.model.GalaxyNavTab
 import com.example.model.GalaxyTheme
+import com.example.model.ModelSelfTestSuite
 import com.example.model.S40Task
 import com.example.model.SavedTextFile
 import com.example.repository.ClaudeS40Repository
 import com.example.repository.MessageRepository
 import com.example.speech.OneUiSpeechRecognizer
 import com.example.speech.SpeechState
+import com.example.util.ModelSelfTestRunner
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -60,6 +62,7 @@ data class MultiAgentUiState(
     val isActionSheetOpen: Boolean = false,
     val isAgentBottomSheetOpen: Boolean = false,
     val statusNotice: String? = null,
+    val modelTestSuite: ModelSelfTestSuite = ModelSelfTestSuite(),
     val selectedAgentId: String = "claude_core",
     val activeAgent: String = "Claude 3.5 Sonnet",
     val smartReplies: List<String> = emptyList(),
@@ -101,6 +104,7 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
     val speechState: StateFlow<SpeechState> = speechRecognizer.speechState
 
     private val apiService = ClaudeApiService()
+    val modelSelfTestRunner = ModelSelfTestRunner(apiService, localGgufModelLoader, nvidiaNodeService)
 
     val settingsFlow: StateFlow<AppSettings> = repository.settingsFlow
     val savedFilesFlow: StateFlow<List<SavedTextFile>> = repository.savedFilesFlow
@@ -272,6 +276,9 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
                 }
             }
         }
+
+        // Auto-test if the models work with the app on startup
+        runModelSelfTests()
     }
 
     private fun observeConversationMessages(convId: String) {
@@ -680,6 +687,18 @@ open class MultiAgentViewModel(application: Application) : AndroidViewModel(appl
 
     fun updateSettings(newSettings: AppSettings) {
         repository.saveSettings(newSettings)
+    }
+
+    /**
+     * Automatically tests all AI models (Built-in offline, local GGUF, NVIDIA node, and cloud providers).
+     */
+    fun runModelSelfTests() {
+        val settings = settingsFlow.value
+        viewModelScope.launch {
+            modelSelfTestRunner.runAutoSelfTests(settings).collect { suite ->
+                _uiState.value = _uiState.value.copy(modelTestSuite = suite)
+            }
+        }
     }
 
     fun dismissNotice() {

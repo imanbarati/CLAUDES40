@@ -178,6 +178,7 @@ fun GalaxyMainContainer(
                             activeAgentName = uiState.activeAgent,
                             theme = settings.theme,
                             statusNotice = uiState.statusNotice,
+                            modelTestSuite = uiState.modelTestSuite,
                             onInputTextChange = { viewModel.onInputTextChange(it) },
                             onSendMessage = { prompt -> viewModel.sendMessage(prompt) },
                             onSmartReplySelected = { reply -> viewModel.onSmartReplyTapped(reply) },
@@ -234,7 +235,9 @@ fun GalaxyMainContainer(
                     composable(GalaxyScreen.Settings.route) {
                         GalaxySettingsScreen(
                             settings = settings,
-                            onSaveSettings = { updated -> viewModel.updateSettings(updated) }
+                            onSaveSettings = { updated -> viewModel.updateSettings(updated) },
+                            modelTestSuite = uiState.modelTestSuite,
+                            onRunSelfTests = { viewModel.runModelSelfTests() }
                         )
                     }
                 }
